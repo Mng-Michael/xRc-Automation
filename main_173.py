@@ -51,7 +51,7 @@ while True:
     elif(HAngle <= 90):
         HAngle = (HAngle-90)*-1
 
-    TAngle = -43*Dist+215
+    TAngle = -45*Dist+215
 
     BallsB = []
     BallsB.append(Game['objects'][1]['global pos'])
