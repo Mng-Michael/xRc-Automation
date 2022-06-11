@@ -99,6 +99,18 @@ ClimbForward = 0
 TRot = 0.0
 Precision = 0
 
+#Controller butons
+ButA = False
+ButB = False
+ButX = False
+ButY = False
+BL = False
+BR = False
+ButR = False
+TrigL = False
+TrigR = False
+
+
 loop_time = time.time()
 
 pygame.init()
@@ -292,9 +304,9 @@ while(True):
                     TrigL = False
             if event.axis == 5:
                 if(event.value > 0.2):
-                    TRigR = True
+                    TrigR = True
                 else:
-                    TRigR = False
+                    TrigR = False
 
     #Sets inputs based on keyboard
     if YMov == 0:
@@ -356,12 +368,12 @@ while(True):
     else:
         Shoot = 0
 
-    if(keyboard.is_pressed('z')):
+    if(keyboard.is_pressed('z') or TrigL):
         ClimbD = 1
     else:
         ClimbD = 0
 
-    if(keyboard.is_pressed('q')):
+    if(keyboard.is_pressed('q') or TrigR):
         ClimbU = 1
     else:
         ClimbU = 0
@@ -373,12 +385,12 @@ while(True):
     else:
         Restart = 0
 
-    if(keyboard.is_pressed('f')):
+    if(keyboard.is_pressed('f') or TrigL):
         ClimbBack = 1
     else:
         ClimbBack = 0
 
-    if(keyboard.is_pressed('h')):
+    if(keyboard.is_pressed('h') or TrigR):
         ClimbForward = 1
     else:
         ClimbForward = 0
