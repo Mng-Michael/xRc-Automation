@@ -1,11 +1,10 @@
-
 import keyboard
 import math as m
 import time
 from simple_pid import PID
-import numpy as np
 import json
-import os
+import pygame
+
 
 
 pidTurn = PID(0.022, 0.0, 0.004, setpoint=0)
@@ -101,6 +100,19 @@ TRot = 0.0
 Precision = 0
 
 loop_time = time.time()
+
+pygame.init()
+
+joysticks = []
+
+# for al the connected joysticks
+for i in range(0, pygame.joystick.get_count()):
+    # create an Joystick object in our list
+    joysticks.append(pygame.joystick.Joystick(i))
+    # initialize them all (-1 means loop forever)
+    joysticks[-1].init()
+    # print a statement telling what the name of the controller is
+    print ("Detected joystick "),joysticks[-1].get_name(),"'"
 
 while(True):
     start = time.time()
@@ -224,34 +236,97 @@ while(True):
     elif(HAngle <= 90):
         HAngle = (HAngle-90)*-1
 
+    Turn = 0
+    XMov = 0
+    YMov = 0
+
+    for event in pygame.event.get():
+        # The 0 button is the 'a' button, 1 is the 'b' button, 2 is the 'x' button, 3 is the 'y' button
+        if event.type == pygame.JOYBUTTONDOWN:
+            if event.button == 3:
+                ButY = True
+            if event.button == 2:
+                ButX = True
+            if event.button == 1:
+                ButB = True
+            if event.button == 0:
+                ButA = True
+            if event.button == 4:
+                BL = True
+            if event.button == 5:
+                BR = True
+            if event.button == 6:
+                ButR = True
+        if event.type == pygame.JOYBUTTONUP:
+            if event.button == 3:
+                ButY = False
+            if event.button == 2:
+                ButX = False
+            if event.button == 1:
+                ButB = False
+            if event.button == 0:
+                ButA = False
+            if event.button == 4:
+                BL = False
+            if event.button == 5:
+                BR = False
+            if event.button == 6:
+                ButR = False
+        if event.type == pygame.JOYAXISMOTION:
+            if event.axis == 0:
+                XMov = event.value
+                if(abs(event.value) < 0.1):
+                    XMov = 0
+            if event.axis == 1:
+                YMov = event.value
+                if(abs(event.value) < 0.1):
+                    YMov = 0
+            if event.axis == 2:
+                Turn = event.value * .7
+                if(abs(event.value) < 0.1):
+                    Turn = 0
+            if event.axis == 4:
+                if(event.value > 0.2):
+                    TrigL = True
+                else:
+                    TrigL = False
+            if event.axis == 5:
+                if(event.value > 0.2):
+                    TRigR = True
+                else:
+                    TRigR = False
+
     #Sets inputs based on keyboard
-    if(keyboard.is_pressed('w')):
-        YMov = -1
-    elif(keyboard.is_pressed('s')):
-        YMov = 1
-    else:
-        YMov = 0
+    if YMov == 0:
+        if(keyboard.is_pressed('w')):
+            YMov = -1
+        elif(keyboard.is_pressed('s')):
+            YMov = 1
+        else:
+            YMov = 0
 
-    if(keyboard.is_pressed('a')):
-        XMov = -1
-    elif(keyboard.is_pressed('d')):
-        XMov = 1
-    else:
-        XMov = 0
+    if XMov == 0:
+        if(keyboard.is_pressed('a')):
+            XMov = -1
+        elif(keyboard.is_pressed('d')):
+            XMov = 1
+        else:
+            XMov = 0
 
-    if(keyboard.is_pressed('j')):
-        Turn = -1
-    elif(keyboard.is_pressed('l')):
-        Turn = 1
-    else:
-        Turn = 0
+    if Turn == 0:
+        if(keyboard.is_pressed('j')):
+            Turn = -.7
+        elif(keyboard.is_pressed('l')):
+            Turn = .7
+        else:
+            Turn = 0
 
-    if(keyboard.is_pressed(',')):
+    if(keyboard.is_pressed(',') or ButY):
         RevIn = 1
     else:
         RevIn = 0
 
-    if(keyboard.is_pressed('.')):
+    if(keyboard.is_pressed('.') or ButB):
         InR = 1
         if(InRPos == 0):
             InRPos = 1
@@ -260,7 +335,7 @@ while(True):
     else:
         InR = 0
 
-    if(keyboard.is_pressed('n')):
+    if(keyboard.is_pressed('n')) or ButX:
         InL = 1
         if(InLPos == 0):
             InLPos = 1
@@ -269,7 +344,7 @@ while(True):
     else:
         InL = 0
 
-    if(keyboard.is_pressed('k')):
+    if(keyboard.is_pressed('k') or BR):
         Shoot = 1
         '''
         if Dist <= 4.3:
@@ -291,7 +366,7 @@ while(True):
     else:
         ClimbU = 0
 
-    if(keyboard.is_pressed(']')):
+    if(keyboard.is_pressed(']') or ButR):
         Restart = 1
         InL = 1
         InR = 1
@@ -308,10 +383,14 @@ while(True):
     else:
         ClimbForward = 0
 
+    
+            
+            
+
     RRot = GRot[1]
     CRot = 0
 
-    if(keyboard.is_pressed('shift')):
+    if(keyboard.is_pressed('shift') or BL):
         if Dist < 4:
             YMov = YMov * .4
         elif Dist < 6:
@@ -330,7 +409,7 @@ while(True):
         CRot = m.degrees(CRot)
         TRot = HRot-CRot
         CRot = 1
-        if 1.2 < Dist < 4.4 and abs(TRot - RRot) < 10:
+        if 1.2 < Dist < 4.4 and abs(TRot - RRot) < 5:
             Shoot = 1
         if XMov != 0 or YMov != 0:
             Movs = turn(XMov, YMov, HRot - RRot + 90)
@@ -340,7 +419,7 @@ while(True):
     # and abs(TRot - RRot) > 5
     print(Dist)
 
-    if(keyboard.is_pressed(';')):
+    if(keyboard.is_pressed(';' or ButA)):
         TRot = HRot
         CRot = 1
     
@@ -387,7 +466,6 @@ while(True):
 
     #print('FPS {}'.format(1 / (time.time() - loop_time)))
     loop_time=time.time()
-    
     #print(abs(TRot - RRot))
 
     #Writes to the controls text document
