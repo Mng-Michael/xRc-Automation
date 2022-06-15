@@ -5,14 +5,15 @@ from simple_pid import PID
 import json
 import pygame
 
-
+P = 1
+D = .1
 
 pidTurn = PID(0.022, 0.0, 0.004, setpoint=0)
 pidTurn.output_limits = (-1.0, 1.0)
 pidTurn.sample_time = .01
-pidX = PID(1, 1, 1, setpoint=0)
+pidX = PID(P, 0, D, setpoint=0)
 pidX.output_limits = (-1.0, 1.0)
-pidY = PID(1, 1, 1, setpoint=0)
+pidY = PID(P, 0, D, setpoint=0)
 pidY.output_limits = (-1.0, 1.0)
 
 '''
@@ -71,6 +72,11 @@ def turn(StartX, StartY, Angle1):
     #print(Tup)
     return Tup
 
+def goTo(x, y, X, Y):
+    pidX.setpoint = x
+    pidY.setpoint = y
+    return [pidX(X), pidY(Y)]
+
 HAngles = [180, 170, 162, 155, 147, 140, 132, 126, 120, 115, 110, 105, 100, 95, 90, 85, 80, 75, 70, 66, 62, 58, 54, 50, 47, 44, 41, 38, 36, 34, 32]
 
 #Set up controller input values
@@ -109,12 +115,13 @@ BR = False
 ButR = False
 TrigL = False
 TrigR = False
+Controller = False
 
 
 loop_time = time.time()
-
+print(0)
 pygame.init()
-
+print(1)
 joysticks = []
 
 # for al the connected joysticks
@@ -125,10 +132,10 @@ for i in range(0, pygame.joystick.get_count()):
     joysticks[-1].init()
     # print a statement telling what the name of the controller is
     print ("Detected joystick "),joysticks[-1].get_name(),"'"
+    Controller = True
 
 while(True):
     start = time.time()
-
     #Opens text documents
     
     Rbot = open('myRobot.txt', 'rt')
@@ -234,12 +241,14 @@ while(True):
     YVol = m.cos(Dif)*Vol
     XVol = m.sin(Dif)*Vol
 
-    
-
-    #Gets distance from hub
+    #Gets distance and relative distance from hub
     Dist = m.hypot(GPos[0],GPos[2])
-    Dist = round(Dist, 1)
-    Dist += YVol * 1.25
+    T = 1.25
+    XDist = XVol * T
+    YDist = YVol * T
+    RDist = m.hypot((YDist+Dist), XDist)
+    MRot = m.sin(XDist*1.4/RDist)
+    MRot = m.degrees(MRot)
     
     #Makes hood angle usable
     HAngle = HAngle[0]
@@ -247,10 +256,6 @@ while(True):
         HAngle = (HAngle-450)*-1
     elif(HAngle <= 90):
         HAngle = (HAngle-90)*-1
-
-    Turn = 0
-    XMov = 0
-    YMov = 0
 
     for event in pygame.event.get():
         # The 0 button is the 'a' button, 1 is the 'b' button, 2 is the 'x' button, 3 is the 'y' button
@@ -309,29 +314,27 @@ while(True):
                     TrigR = False
 
     #Sets inputs based on keyboard
-    if YMov == 0:
-        if(keyboard.is_pressed('w')):
-            YMov = -1
-        elif(keyboard.is_pressed('s')):
-            YMov = 1
-        else:
-            YMov = 0
+    
+    if(keyboard.is_pressed('w')):
+        YMov = -1
+    elif(keyboard.is_pressed('s')):
+        YMov = 1
+    elif not Controller:
+        YMov = 0
 
-    if XMov == 0:
-        if(keyboard.is_pressed('a')):
-            XMov = -1
-        elif(keyboard.is_pressed('d')):
-            XMov = 1
-        else:
-            XMov = 0
+    if(keyboard.is_pressed('a')):
+        XMov = -1
+    elif(keyboard.is_pressed('d')):
+        XMov = 1
+    elif not Controller:
+        XMov = 0
 
-    if Turn == 0:
-        if(keyboard.is_pressed('j')):
-            Turn = -.7
-        elif(keyboard.is_pressed('l')):
-            Turn = .7
-        else:
-            Turn = 0
+    if(keyboard.is_pressed('j')):
+        Turn = -.7
+    elif(keyboard.is_pressed('l')):
+        Turn = .7
+    elif not Controller:
+        Turn = 0
 
     if(keyboard.is_pressed(',') or ButY):
         RevIn = 1
@@ -395,41 +398,28 @@ while(True):
     else:
         ClimbForward = 0
 
-    
-            
-            
-
     RRot = GRot[1]
     CRot = 0
 
     if(keyboard.is_pressed('shift') or BL):
-        if Dist < 4:
+        if RDist < 4:
             YMov = YMov * .4
-        elif Dist < 6:
+        elif RDist < 6:
             YMov = YMov * .6
         else:
             YMov = YMov * .8
-        if Dist > 3.5 and abs(YMov) < .1:
-            YMov -= .5
+        if Dist > 3.2 and abs(YMov) < .1:
+            YMov -= .2
         Turn = Turn * .3
         XMov = XMov * .5
-        XDis = XVol * 1.25
-        CRot = XDis/Dist
-        if CRot > 1 or CRot < -1:
-            CRot = .9   
-        CRot = m.asin(CRot)
-        CRot = m.degrees(CRot)
-        TRot = HRot-CRot
+        TRot = HRot-MRot
         CRot = 1
-        if 1.2 < Dist < 4.4 and abs(TRot - RRot) < 5:
+        if 1.2 < RDist < 4.4 and abs(TRot - RRot) < 15:
             Shoot = 1
         if XMov != 0 or YMov != 0:
             Movs = turn(XMov, YMov, HRot - RRot + 90)
-            #print(HRot)
             XMov = Movs[0]
             YMov = Movs[1]
-    # and abs(TRot - RRot) > 5
-    print(Dist)
 
     if(keyboard.is_pressed(';' or ButA)):
         TRot = HRot
@@ -449,13 +439,13 @@ while(True):
     Fender = 0
     if(CRot == 1):
         if CloseB < 0.14 or BallsB[BallNumB][1] > .27 and BallsB[BallNumB][1] < 1.5:
-            Fender = 1
+            Fender = 0
         else:
             Fender = 0
         Turn = TurnTo(RRot, GRotV[1], TRot + 2)
 
     #sets hood angle automatically
-    HIndex = int((Dist-1.3)*10)
+    HIndex = int((round(RDist, 1)-1.3)*10)
     if HIndex < 0:
         HIndex = 0
     elif HIndex > 30:
@@ -476,9 +466,15 @@ while(True):
         HoodU = 1
         HoodD = 0
 
+    if keyboard.is_pressed('g'):
+        Movment1 = goTo(2, 0, GPos[0], GPos[2])
+        Movment2 = turn(Movment1[0], Movment1[1], 0)
+        XMov = Movment2[0]
+        YMov = Movment2[1]
+
     #print('FPS {}'.format(1 / (time.time() - loop_time)))
     loop_time=time.time()
-    #print(abs(TRot - RRot))
+    print(GPos)
 
     #Writes to the controls text document
     Controls.write('a=' + str(RevIn) + '\nb=' + str(InR) + '\nx=' + str(InL) + '\ny=' + str(Shoot) + '\ndpad_left=' + str(ClimbD) + '\ndpad_right=' + str(ClimbU) + 
